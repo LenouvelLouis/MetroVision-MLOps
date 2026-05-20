@@ -1,6 +1,61 @@
-/venv/
-/teams19.mat
-/teamsNN.mat
-/temp_BDTEST.mat
-/.idea
-/__pycache__/
+# ── Python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# ── Virtual environments ─────────────────────────────────────────────────
+.venv/
+venv/
+ENV/
+
+# ── IDE ──────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Testing / coverage ──────────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# ── Mypy ─────────────────────────────────────────────────────────────────
+.mypy_cache/
+
+# ── Ruff ─────────────────────────────────────────────────────────────────
+.ruff_cache/
+
+# ── Docker ───────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── MLflow ───────────────────────────────────────────────────────────────
+mlruns/
+mlartifacts/
+mlflow-data/
+
+# ── Monitoring (docker volume data) ─────────────────────────────────────
+prometheus-data/
+grafana-data/
+
+# ── Claude Code ──────────────────────────────────────────────────────────
+.claude/
+CLAUDE.md
+
+# ── OS ───────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Project-specific (academic data files) ───────────────────────────────
+*.mat
+/BD_CHALLENGE/
+
+# ── Drift reports (generated) ───────────────────────────────────────────
+monitoring/drift/report.html

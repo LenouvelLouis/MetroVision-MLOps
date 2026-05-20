@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metrovision-config
+  labels:
+    app: metrovision-api
+data:
+  LOG_LEVEL: "info"
+  MLFLOW_TRACKING_URI: "http://mlflow:5000"

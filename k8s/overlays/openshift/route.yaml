@@ -1,0 +1,16 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: metrovision-api
+  labels:
+    app: metrovision-api
+spec:
+  to:
+    kind: Service
+    name: metrovision-api
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

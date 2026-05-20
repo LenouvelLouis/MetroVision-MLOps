@@ -1,0 +1,29 @@
+groups:
+  - name: metrovision-api
+    rules:
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(metrovision_request_duration_seconds_bucket[5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High prediction latency (p95 > 5s)"
+          description: "The 95th percentile latency has exceeded 5 seconds for more than 2 minutes."
+
+      - alert: HighErrorRate
+        expr: sum(rate(metrovision_requests_total{status="error"}[5m])) / sum(rate(metrovision_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate (> 5%)"
+          description: "More than 5% of prediction requests are failing."
+
+      - alert: NoTraffic
+        expr: sum(rate(metrovision_requests_total[10m])) == 0
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "No traffic to MetroVision API"
+          description: "The API has received zero requests in the last 15 minutes."
