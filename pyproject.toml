@@ -59,6 +59,16 @@ Repository = "https://github.com/LenouvelLouis/MetroVision-MLOps"
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+exclude = [
+    "myMetroProcessing.py",
+    "train_cnn.py",
+    "train_knn_scaler.py",
+    "evaluationV2.py",
+    "metroChallenge.py",
+    "app.py",
+    "test.py",
+    "train_params_hough.py",
+]
 
 [tool.ruff.lint]
 select = [

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-from starlette.status import HTTP_200_OK, HTTP_503_SERVICE_UNAVAILABLE
 
 from api.model_manager import model_manager
 from api.schemas import HealthResponse

@@ -39,8 +39,7 @@ class ModelManager:
         missing = [name for name, path in EXPECTED_FILES.items() if not path.exists()]
         if missing:
             raise FileNotFoundError(
-                f"Missing model files: {', '.join(missing)}. "
-                f"Expected in {MODEL_DIR}"
+                f"Missing model files: {', '.join(missing)}. Expected in {MODEL_DIR}"
             )
 
         from myMetroProcessing import load_models

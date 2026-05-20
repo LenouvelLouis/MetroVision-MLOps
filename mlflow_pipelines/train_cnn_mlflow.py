@@ -20,9 +20,8 @@ import cv2
 import mlflow
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from tensorflow import keras
 from keras import layers, models
+from tensorflow import keras
 
 from mlflow_pipelines.config import (
     EXPERIMENT_CNN,
@@ -80,16 +79,18 @@ def load_training_data(
 
 def build_model(img_size: int) -> keras.Model:
     """Build the binary CNN architecture (same as original train_cnn.py)."""
-    return models.Sequential([
-        layers.Input((img_size, img_size, 1)),
-        layers.Conv2D(32, 3, activation="relu", padding="same"),
-        layers.MaxPooling2D(),
-        layers.Conv2D(64, 3, activation="relu", padding="same"),
-        layers.MaxPooling2D(),
-        layers.Flatten(),
-        layers.Dense(64, activation="relu"),
-        layers.Dense(1, activation="sigmoid"),
-    ])
+    return models.Sequential(
+        [
+            layers.Input((img_size, img_size, 1)),
+            layers.Conv2D(32, 3, activation="relu", padding="same"),
+            layers.MaxPooling2D(),
+            layers.Conv2D(64, 3, activation="relu", padding="same"),
+            layers.MaxPooling2D(),
+            layers.Flatten(),
+            layers.Dense(64, activation="relu"),
+            layers.Dense(1, activation="sigmoid"),
+        ]
+    )
 
 
 def main() -> None:
@@ -102,28 +103,33 @@ def main() -> None:
     x_train, y_train = load_training_data(args.data_xlsx, args.image_dir, args.img_size)
     n_positive = int(y_train.sum())
     n_negative = len(y_train) - n_positive
-    logger.info("Loaded %d samples (positive: %d, negative: %d)", len(y_train), n_positive, n_negative)
+    logger.info(
+        "Loaded %d samples (positive: %d, negative: %d)", len(y_train), n_positive, n_negative
+    )
 
     with mlflow.start_run(run_name="cnn-binary-training") as run:
         # Log parameters
-        mlflow.log_params({
-            "epochs": args.epochs,
-            "batch_size": args.batch_size,
-            "validation_split": args.validation_split,
-            "img_size": args.img_size,
-            "optimizer": "adam",
-            "loss": "binary_crossentropy",
-            "n_samples": len(y_train),
-            "n_positive": n_positive,
-            "n_negative": n_negative,
-        })
+        mlflow.log_params(
+            {
+                "epochs": args.epochs,
+                "batch_size": args.batch_size,
+                "validation_split": args.validation_split,
+                "img_size": args.img_size,
+                "optimizer": "adam",
+                "loss": "binary_crossentropy",
+                "n_samples": len(y_train),
+                "n_positive": n_positive,
+                "n_negative": n_negative,
+            }
+        )
 
         # Build and train
         model = build_model(args.img_size)
         model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
 
         history = model.fit(
-            x_train, y_train,
+            x_train,
+            y_train,
             validation_split=args.validation_split,
             epochs=args.epochs,
             batch_size=args.batch_size,
@@ -144,10 +150,12 @@ def main() -> None:
         # Log final metrics
         final_val_acc = history.history["val_accuracy"][-1]
         final_val_loss = history.history["val_loss"][-1]
-        mlflow.log_metrics({
-            "final_val_accuracy": final_val_acc,
-            "final_val_loss": final_val_loss,
-        })
+        mlflow.log_metrics(
+            {
+                "final_val_accuracy": final_val_acc,
+                "final_val_loss": final_val_loss,
+            }
+        )
 
         # Save and log model
         os.makedirs(args.output_dir, exist_ok=True)
@@ -161,7 +169,8 @@ def main() -> None:
 
         logger.info(
             "Training complete. Run ID: %s | Val accuracy: %.4f",
-            run.info.run_id, final_val_acc,
+            run.info.run_id,
+            final_val_acc,
         )
 
 

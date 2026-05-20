@@ -53,9 +53,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_line_data(
-    xlsx_path: str, image_dir: str, img_size: int
-) -> tuple[np.ndarray, np.ndarray]:
+def load_line_data(xlsx_path: str, image_dir: str, img_size: int) -> tuple[np.ndarray, np.ndarray]:
     """Load ROIs with HYP > 0 and extract HOG features."""
     df = pd.read_excel(xlsx_path)
     df_pos = df[df["HYP"] > 0]
@@ -102,20 +100,22 @@ def main() -> None:
 
     with mlflow.start_run(run_name="knn-line-training") as run:
         # Log parameters
-        mlflow.log_params({
-            "n_neighbors": args.n_neighbors,
-            "metric": args.metric,
-            "test_size": args.test_size,
-            "random_state": args.random_state,
-            "img_size": args.img_size,
-            "n_samples": len(y),
-            "n_classes": len(np.unique(y)),
-            "hog_orientations": HOG_PARAMS["orientations"],
-            "hog_pixels_per_cell": str(HOG_PARAMS["pixels_per_cell"]),
-            "hog_cells_per_block": str(HOG_PARAMS["cells_per_block"]),
-            "hog_block_norm": HOG_PARAMS["block_norm"],
-            "feature_dim": x_hog.shape[1],
-        })
+        mlflow.log_params(
+            {
+                "n_neighbors": args.n_neighbors,
+                "metric": args.metric,
+                "test_size": args.test_size,
+                "random_state": args.random_state,
+                "img_size": args.img_size,
+                "n_samples": len(y),
+                "n_classes": len(np.unique(y)),
+                "hog_orientations": HOG_PARAMS["orientations"],
+                "hog_pixels_per_cell": str(HOG_PARAMS["pixels_per_cell"]),
+                "hog_cells_per_block": str(HOG_PARAMS["cells_per_block"]),
+                "hog_block_norm": HOG_PARAMS["block_norm"],
+                "feature_dim": x_hog.shape[1],
+            }
+        )
 
         # Train
         knn = KNeighborsClassifier(n_neighbors=args.n_neighbors, metric=args.metric)
@@ -158,7 +158,9 @@ def main() -> None:
 
         logger.info(
             "Training complete. Run ID: %s | Accuracy: %.4f | Weighted F1: %.4f",
-            run.info.run_id, accuracy, report["weighted avg"]["f1-score"],
+            run.info.run_id,
+            accuracy,
+            report["weighted avg"]["f1-score"],
         )
 
 

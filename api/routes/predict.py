@@ -6,7 +6,7 @@ import logging
 import time
 
 import numpy as np
-from fastapi import APIRouter, File, Query, UploadFile
+from fastapi import APIRouter, Query, UploadFile
 from PIL import Image
 
 from api.model_manager import model_manager
@@ -24,10 +24,8 @@ router = APIRouter()
     summary="Detect metro pictograms in an uploaded image",
 )
 async def predict(
-    file: UploadFile = File(description="Image file (JPEG/PNG)"),
-    resize_factor: float = Query(
-        default=1.0, ge=0.5, le=1.5, description="Image resize factor"
-    ),
+    file: UploadFile,
+    resize_factor: float = Query(default=1.0, ge=0.5, le=1.5, description="Image resize factor"),
 ) -> PredictResponse:
     """Run the full detection pipeline on the uploaded image.
 
@@ -44,9 +42,7 @@ async def predict(
         raise HTTPException(status_code=503, detail="Models not loaded yet")
 
     contents = await file.read()
-    image = Image.open(
-        __import__("io").BytesIO(contents)
-    ).convert("RGB")
+    image = Image.open(__import__("io").BytesIO(contents)).convert("RGB")
     im_array = np.array(image)
 
     from myMetroProcessing import processOneMetroImage

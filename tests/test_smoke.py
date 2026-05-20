@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -10,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 class TestDirectorySkeleton:
     """Verify that the target architecture directories exist."""
 
-    EXPECTED_DIRS = [
+    EXPECTED_DIRS: ClassVar[list[str]] = [
         "api",
         "docker",
         "k8s",

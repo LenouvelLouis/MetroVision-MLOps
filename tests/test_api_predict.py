@@ -19,11 +19,14 @@ TEST_IMAGE = ROOT / "IM_(1).jpg"
 
 # Models must be loaded for predict tests
 needs_models = pytest.mark.skipif(
-    not all(p.exists() for p in [
-        ROOT / "model" / "model_binary_real_metro.h5",
-        ROOT / "model" / "knn_line_model.joblib",
-        ROOT / "model" / "scaler_line.joblib",
-    ]),
+    not all(
+        p.exists()
+        for p in [
+            ROOT / "model" / "model_binary_real_metro.h5",
+            ROOT / "model" / "knn_line_model.joblib",
+            ROOT / "model" / "scaler_line.joblib",
+        ]
+    ),
     reason="Model files not present",
 )
 

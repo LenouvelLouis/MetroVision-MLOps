@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import logging
 from pathlib import Path
 
@@ -59,20 +60,20 @@ def register_cnn_baseline(model_dir: Path) -> None:
         return
 
     with mlflow.start_run(run_name="baseline-cnn") as run:
-        mlflow.log_params({
-            "source": "pre-trained-baseline",
-            "model_file": MODEL_FILES["cnn"]["file"],
-            "img_size": 64,
-            "architecture": "Sequential(Conv2D-32, Conv2D-64, Dense-64, Dense-1)",
-        })
+        mlflow.log_params(
+            {
+                "source": "pre-trained-baseline",
+                "model_file": MODEL_FILES["cnn"]["file"],
+                "img_size": 64,
+                "architecture": "Sequential(Conv2D-32, Conv2D-64, Dense-64, Dense-1)",
+            }
+        )
         mlflow.log_artifact(str(cnn_path), artifact_path="model")
 
         client = mlflow.tracking.MlflowClient()
         model_name = MODEL_FILES["cnn"]["registered_name"]
-        try:
+        with contextlib.suppress(mlflow.exceptions.MlflowException):
             client.create_registered_model(model_name)
-        except mlflow.exceptions.MlflowException:
-            pass  # Already exists
         client.create_model_version(
             name=model_name,
             source=f"{run.info.artifact_uri}/model",
@@ -92,23 +93,23 @@ def register_knn_baseline(model_dir: Path) -> None:
         return
 
     with mlflow.start_run(run_name="baseline-knn") as run:
-        mlflow.log_params({
-            "source": "pre-trained-baseline",
-            "n_neighbors": 3,
-            "metric": "euclidean",
-            "hog_orientations": 9,
-            "hog_pixels_per_cell": "(8, 8)",
-            "hog_cells_per_block": "(2, 2)",
-        })
+        mlflow.log_params(
+            {
+                "source": "pre-trained-baseline",
+                "n_neighbors": 3,
+                "metric": "euclidean",
+                "hog_orientations": 9,
+                "hog_pixels_per_cell": "(8, 8)",
+                "hog_cells_per_block": "(2, 2)",
+            }
+        )
         for f in files:
             mlflow.log_artifact(str(f), artifact_path="model")
 
         client = mlflow.tracking.MlflowClient()
         model_name = MODEL_FILES["knn"]["registered_name"]
-        try:
+        with contextlib.suppress(mlflow.exceptions.MlflowException):
             client.create_registered_model(model_name)
-        except mlflow.exceptions.MlflowException:
-            pass  # Already exists
         client.create_model_version(
             name=model_name,
             source=f"{run.info.artifact_uri}/model",
