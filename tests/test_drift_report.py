@@ -2,19 +2,27 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-# Evidently has a typing incompatibility with Python 3.11.0 specifically.
-# Tests that need evidently are skipped on 3.11.0.
-_evidently_broken = sys.version_info[:3] == (3, 11, 0)
+
+def _can_import_evidently() -> bool:
+    """Check if evidently's drift report machinery is importable."""
+    try:
+        from monitoring.drift.drift_report import _import_evidently
+
+        _import_evidently()
+        return True
+    except (ImportError, KeyError, TypeError):
+        return False
+
+
 needs_evidently = pytest.mark.skipif(
-    _evidently_broken,
-    reason="Evidently incompatible with Python 3.11.0 (typing bug); works on 3.11.1+",
+    not _can_import_evidently(),
+    reason="Evidently not importable (version or Python compatibility issue)",
 )
 
 

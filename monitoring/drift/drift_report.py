@@ -46,18 +46,12 @@ HOG_PARAMS = dict(
 
 
 def _import_evidently():
-    """Lazy-import evidently to avoid import-time crash on Python 3.11.0."""
-    try:
-        from evidently import ColumnMapping
-        from evidently.metric_preset import DataDriftPreset
-        from evidently.report import Report
+    """Lazy-import evidently to handle API differences across versions."""
+    from evidently.metric_preset import DataDriftPreset
+    from evidently.options import ColumnMapping
+    from evidently.report import Report
 
-        return ColumnMapping, DataDriftPreset, Report
-    except (KeyError, TypeError) as exc:
-        raise ImportError(
-            "Evidently is incompatible with Python 3.11.0 due to a typing bug. "
-            "Please use Python >= 3.11.1 or run inside Docker (python:3.11-slim)."
-        ) from exc
+    return ColumnMapping, DataDriftPreset, Report
 
 
 def extract_hog_features_from_dir(image_dir: Path) -> pd.DataFrame:
