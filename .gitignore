@@ -40,6 +40,7 @@ docker-compose.override.yml
 .env
 .env.local
 .env.*.local
+.api-keys
 
 # ── MLflow ───────────────────────────────────────────────────────────────
 mlruns/
@@ -64,3 +65,4 @@ Thumbs.db
 
 # ── Drift reports (generated) ───────────────────────────────────────────
 monitoring/drift/report.html
+docs/security-roadmap.md

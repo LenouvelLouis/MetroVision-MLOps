@@ -9,9 +9,10 @@ import logging
 import time
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile
 from PIL import Image, UnidentifiedImageError
 
+from api.auth import require_api_key
 from api.model_manager import model_manager
 from api.rate_limit import PREDICT_RATE_LIMIT, limiter
 from api.routes.metrics import (
@@ -51,6 +52,7 @@ def _fail(reason: str, status: int, detail: str) -> HTTPException:
     "/predict",
     response_model=PredictResponse,
     summary="Detect metro pictograms in an uploaded image",
+    dependencies=[Depends(require_api_key)],
 )
 @limiter.limit(PREDICT_RATE_LIMIT)
 async def predict(

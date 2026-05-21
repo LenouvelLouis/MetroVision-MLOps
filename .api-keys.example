@@ -1,0 +1,10 @@
+# MetroVision API keys
+# One SHA-256 hex digest per line. Lines starting with '#' are ignored.
+#
+# Generate a hash for a raw key:
+#   python -c "import hashlib,sys;print(hashlib.sha256(sys.argv[1].encode()).hexdigest())" "MY-RAW-KEY"
+#
+# An empty file means /predict is unreachable (503).
+#
+# Example entry (DO NOT USE — replace with your own):
+# 0b2648cc3bd254cea4719ae082d69518aa92640ccbf95124729f524aa7772019
