@@ -16,14 +16,10 @@ TEST_RAW_KEY = "test-key-for-pytest"
 
 
 @pytest.fixture(autouse=True)
-def _setup_api_keys(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> Iterator[None]:
+def _setup_api_keys(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """Each test runs against a fresh API-keys file containing one known key."""
     keys_file = tmp_path / "api-keys"
-    keys_file.write_text(
-        hashlib.sha256(TEST_RAW_KEY.encode()).hexdigest() + "\n"
-    )
+    keys_file.write_text(hashlib.sha256(TEST_RAW_KEY.encode()).hexdigest() + "\n")
     monkeypatch.setenv("METROVISION_API_KEYS_FILE", str(keys_file))
     auth_mod.reload_api_keys()
     yield

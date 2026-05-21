@@ -1,0 +1,63 @@
+# Vulnerabilities knowingly accepted, with justification and review owner.
+# Format: one CVE ID per line; lines starting with '#' are comments.
+
+# ── pillow 12.x bumps ─────────────────────────────────────────────────
+# Moving from pillow 11.x to 12.x is a major version bump that needs
+# coordinated testing with TF, scikit-image and the academic pipeline.
+# Tracked separately; rotate the date and revisit once the upgrade lands.
+# Reviewed: 2026-05-21 — Louis
+CVE-2026-25990
+CVE-2026-40192
+CVE-2026-42311
+
+# ── wheel build-time tool ──────────────────────────────────────────────
+# `wheel` is a build dependency only (not at runtime). The privilege-
+# escalation path requires a malicious .whl input, which we don't accept
+# from untrusted sources at build time.
+# Reviewed: 2026-05-21 — Louis
+CVE-2026-24049
+
+# ── mlflow CVEs requiring 3.x upgrade ─────────────────────────────────
+# Our constraint is `mlflow>=2.22,<3`; all listed CVEs are fixed in 3.x
+# (path traversal, SSRF, arbitrary file read, auth bypass).
+# Compensating controls already in place:
+#   - Server is bound to 127.0.0.1 only (phase 0.1)
+#   - Basic auth required for all /api/* calls (phase 2.2)
+#   - Server runs as non-root uid=10001 (phase 3.5)
+#   - All capabilities dropped, no-new-privileges (phase 3.3)
+# Tracked: migrate to MLflow 3.x as part of phase 6 (PostgreSQL backend +
+# S3 artifact store) where the upgrade can be tested holistically.
+# Reviewed: 2026-05-21 — Louis
+CVE-2025-15031
+CVE-2025-15036
+CVE-2025-15379
+CVE-2025-10279
+CVE-2025-14279
+CVE-2025-14287
+CVE-2026-2033
+CVE-2026-2393
+CVE-2026-2614
+CVE-2026-2635
+CVE-2026-0596
+
+# ── distroless base image (Debian 12 + CPython 3.11) ─────────────────
+# These CVEs ship with the gcr.io/distroless/python3-debian12:nonroot
+# digest we pin against. They are fixed upstream but the distroless
+# build hasn't rebased yet. Compensating controls:
+#   - Image runs as nonroot (uid 65532), read-only rootfs, all caps dropped
+#   - The tarfile / email-header attack surface is unreachable from /predict
+# Tracked: re-pin the distroless digest on every dependabot/PR review.
+# Reviewed: 2026-05-21 — Louis
+CVE-2026-0861
+CVE-2025-13836
+CVE-2025-8194
+CVE-2026-1299
+
+# ── gradio: optional academic dep only ────────────────────────────────
+# `gradio` lives in the [academic] extra and is used solely by the legacy
+# `app.py` notebook UI. It is NOT installed in the production runtime
+# image (Dockerfile.api does not pull it). Fixes in gradio 6.x require
+# a major bump which is unrelated to the production API.
+# Reviewed: 2026-05-21 — Louis
+CVE-2026-28414
+CVE-2026-28416

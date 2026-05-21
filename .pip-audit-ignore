@@ -1,0 +1,53 @@
+# Vulnerability IDs accepted by `pip-audit` with justification.
+# Format: one ID per line; '#' starts a comment. Used by the Security
+# workflow (.github/workflows/security.yml) to keep the CI green while
+# tracking the upgrades that would clear them.
+
+# ── pillow 12.x bumps (mirror of .trivyignore) ────────────────────────
+# Our constraint is pillow>=11.3,<12. Major bump to 12.x needs a
+# coordinated test with TF, scikit-image and the academic pipeline.
+# Reviewed: 2026-05-21 — Louis
+CVE-2026-25990
+CVE-2026-40192
+CVE-2026-42308
+CVE-2026-42309
+CVE-2026-42310
+CVE-2026-42311
+
+# ── mlflow 3.x bumps (mirror of .trivyignore) ─────────────────────────
+# Server isolated behind 127.0.0.1 + basic-auth + non-root.
+# 3.x migration deferred to phase 6.
+# Reviewed: 2026-05-21 — Louis
+CVE-2026-0596
+CVE-2026-2393
+CVE-2026-2614
+PYSEC-2025-52
+PYSEC-2026-93
+PYSEC-2026-94
+
+# ── Transitive deps that pip-audit only sees via PyPA's DB ────────────
+# joblib path traversal — only exploitable when un-pickling untrusted
+# files, which we never do (model files are signature-checked separately
+# in phase 5.1). Fix expected in joblib 1.6 with API change.
+# Reviewed: 2026-05-21 — Louis
+PYSEC-2024-277
+
+# keras pickle deserialisation — same blast radius as joblib: we only
+# load .h5 files we built ourselves, never user input.
+# Reviewed: 2026-05-21 — Louis
+PYSEC-2025-121
+
+# markdown XSS — markdown is a transitive dep of MLflow only used to
+# render run descriptions in the MLflow UI, which is gated by basic-auth.
+# Reviewed: 2026-05-21 — Louis
+PYSEC-2026-89
+
+# nltk RCE via pickle — transitive of evidently. We do not call any
+# nltk function from the API code path.
+# Reviewed: 2026-05-21 — Louis
+PYSEC-2026-97
+
+# pyarrow IPC deserialisation — transitive of mlflow/pandas. Reachable
+# only from MLflow tracking-server endpoints, already auth-gated.
+# Reviewed: 2026-05-21 — Louis
+PYSEC-2026-113

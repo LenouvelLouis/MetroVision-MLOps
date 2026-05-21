@@ -56,9 +56,7 @@ class TestPredictWithoutModels:
         finally:
             model_manager._loaded = original
 
-    def test_predict_returns_422_without_file(
-        self, api_key_header: dict[str, str]
-    ) -> None:
+    def test_predict_returns_422_without_file(self, api_key_header: dict[str, str]) -> None:
         client = TestClient(app, raise_server_exceptions=False)
         response = client.post("/predict", headers=api_key_header)
         assert response.status_code == 422
@@ -72,18 +70,14 @@ class TestPredictWithModels:
         self, loaded_client: TestClient, api_key_header: dict[str, str]
     ) -> None:
         with open(TEST_IMAGE, "rb") as f:
-            response = loaded_client.post(
-                "/predict", files={"file": f}, headers=api_key_header
-            )
+            response = loaded_client.post("/predict", files={"file": f}, headers=api_key_header)
         assert response.status_code == 200
 
     def test_predict_response_structure(
         self, loaded_client: TestClient, api_key_header: dict[str, str]
     ) -> None:
         with open(TEST_IMAGE, "rb") as f:
-            response = loaded_client.post(
-                "/predict", files={"file": f}, headers=api_key_header
-            )
+            response = loaded_client.post("/predict", files={"file": f}, headers=api_key_header)
         data = response.json()
         assert "detections" in data
         assert "count" in data
@@ -94,9 +88,7 @@ class TestPredictWithModels:
         self, loaded_client: TestClient, api_key_header: dict[str, str]
     ) -> None:
         with open(TEST_IMAGE, "rb") as f:
-            response = loaded_client.post(
-                "/predict", files={"file": f}, headers=api_key_header
-            )
+            response = loaded_client.post("/predict", files={"file": f}, headers=api_key_header)
         data = response.json()
         if data["count"] > 0:
             det = data["detections"][0]

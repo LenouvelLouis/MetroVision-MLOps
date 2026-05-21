@@ -1,17 +1,28 @@
-# ── Stage 1: dependencies (full Debian for pip + build deps) ────────────
+# ── Stage 1: dependencies (uv-driven hash-pinned install) ───────────────
 FROM python:3.11-slim-bookworm AS deps
 
 WORKDIR /build
 
-# libgomp is required by numpy/scipy/sklearn for OpenMP at runtime;
-# nothing else (we use opencv-python-headless, no X11 / libGL needed).
+# libgomp is dlopened at runtime by numpy / scipy / sklearn (OpenMP).
+# Nothing else is needed: we use opencv-python-headless and avoid X11/libGL.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libgomp1 && \
     rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir . && \
-    pip install --no-cache-dir "uvicorn[standard]"
+# Bring in uv from the official static image.
+COPY --from=ghcr.io/astral-sh/uv:0.5.20 /uv /usr/local/bin/uv
+
+# Resolve & install third-party deps from the committed uv.lock,
+# with PEP 503 hashes — install fails if anything is tampered with.
+COPY pyproject.toml uv.lock ./
+RUN uv export --frozen --no-dev --no-emit-project --no-emit-workspace \
+        --format requirements-txt --output-file requirements.lock.txt && \
+    pip install --no-cache-dir --require-hashes -r requirements.lock.txt
+
+# Install the project itself (no deps — already resolved above).
+COPY api/ ./api/
+COPY myMetroProcessing.py ./
+RUN pip install --no-cache-dir --no-deps .
 
 # ── Stage 2: runtime (distroless: no shell, no package manager) ─────────
 FROM gcr.io/distroless/python3-debian12:nonroot AS runtime
@@ -22,7 +33,7 @@ WORKDIR /app
 COPY --from=deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=deps /usr/local/bin/uvicorn /usr/local/bin/uvicorn
 
-# libgomp for the BLAS / numerical stack
+# libgomp (OpenMP) is the only system library needed at runtime
 COPY --from=deps /usr/lib/x86_64-linux-gnu/libgomp.so* /usr/lib/x86_64-linux-gnu/
 
 # Application code
