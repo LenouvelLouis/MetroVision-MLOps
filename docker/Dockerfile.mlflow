@@ -1,5 +1,17 @@
 # Extend the official MLflow image with the optional auth extras
-# (Flask-WTF, etc.) required by `--app-name basic-auth`.
+# (Flask-WTF, etc.) required by `--app-name basic-auth`, and run the
+# server as a non-root user.
 FROM ghcr.io/mlflow/mlflow:v2.22.0@sha256:191fb7f5390f92ee7f95b3a08a77ce9eb4c01dd2721107ec2460e5ba37a0a97c
 
 RUN pip install --no-cache-dir "mlflow[auth]==2.22.0"
+
+# Provision a dedicated non-root user and ensure /mlflow is writable.
+# Note: existing mlflow-data volumes created under root must be reset
+# (docker compose down -v) before this image can write to them.
+RUN groupadd -g 10001 mlflow_run && \
+    useradd -u 10001 -g 10001 -m -d /home/mlflow_run mlflow_run && \
+    mkdir -p /mlflow && \
+    chown -R mlflow_run:mlflow_run /mlflow /home/mlflow_run
+
+USER mlflow_run:mlflow_run
+WORKDIR /home/mlflow_run

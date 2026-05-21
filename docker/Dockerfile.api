@@ -1,45 +1,41 @@
-# ── Stage 1: dependencies ────────────────────────────────────────────────
-FROM python:3.11-slim AS deps
+# ── Stage 1: dependencies (full Debian for pip + build deps) ────────────
+FROM python:3.11-slim-bookworm AS deps
 
 WORKDIR /build
 
-# System packages needed to compile opencv and scientific libs
+# libgomp is required by numpy/scipy/sklearn for OpenMP at runtime;
+# nothing else (we use opencv-python-headless, no X11 / libGL needed).
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        libgl1 libglib2.0-0 && \
+    apt-get install -y --no-install-recommends libgomp1 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
 RUN pip install --no-cache-dir . && \
-    pip install --no-cache-dir uvicorn[standard]
+    pip install --no-cache-dir "uvicorn[standard]"
 
-# ── Stage 2: runtime ────────────────────────────────────────────────────
-FROM python:3.11-slim AS runtime
+# ── Stage 2: runtime (distroless: no shell, no package manager) ─────────
+FROM gcr.io/distroless/python3-debian12:nonroot AS runtime
 
 WORKDIR /app
 
-# Runtime system libs (opencv needs libgl)
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        libgl1 libglib2.0-0 && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy installed packages from deps stage
+# Python deps + uvicorn launcher
 COPY --from=deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=deps /usr/local/bin /usr/local/bin
+COPY --from=deps /usr/local/bin/uvicorn /usr/local/bin/uvicorn
 
-# Copy application code
+# libgomp for the BLAS / numerical stack
+COPY --from=deps /usr/lib/x86_64-linux-gnu/libgomp.so* /usr/lib/x86_64-linux-gnu/
+
+# Application code
 COPY api/ ./api/
 COPY myMetroProcessing.py ./
 COPY model/ ./model/
 
-# Non-root user for security
-RUN useradd --create-home appuser
-USER appuser
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages \
+    PYTHONDONTWRITEBYTECODE=1
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+    CMD ["/usr/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["/usr/bin/python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
