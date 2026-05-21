@@ -5,6 +5,11 @@ global:
 rule_files:
   - /etc/prometheus/alerts.yml
 
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 scrape_configs:
   - job_name: "metrovision-api"
     metrics_path: "/metrics"
@@ -13,3 +18,8 @@ scrape_configs:
         labels:
           service: "metrovision"
           environment: "dev"
+
+  # Alertmanager self-scrape (its own health + delivery metrics)
+  - job_name: "alertmanager"
+    static_configs:
+      - targets: ["alertmanager:9093"]

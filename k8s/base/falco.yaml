@@ -1,0 +1,191 @@
+---
+# Falco namespace-scoped install — the upstream Helm chart is the
+# preferred path in production, this manifest is a minimal reference
+# so the layout shows the runtime-security story alongside the rest.
+#
+# `falco` runs as a privileged DaemonSet (one pod per node) because it
+# attaches an eBPF probe to the kernel. The trade-off is intentional and
+# scoped to the security namespace.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: falco
+  labels:
+    name: falco
+    pod-security.kubernetes.io/enforce: privileged
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: falco
+  namespace: falco
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: falco
+rules:
+  - apiGroups: [""]
+    resources: [pods, nodes, namespaces, replicationcontrollers, services, events]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [daemonsets, deployments, replicasets, statefulsets]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: falco
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: falco
+subjects:
+  - kind: ServiceAccount
+    name: falco
+    namespace: falco
+---
+# Custom MetroVision-specific rules layered on top of the Falco
+# built-in defaults. Each rule triggers an alert that Falcosidekick
+# (out of scope here) would forward to Slack / Alertmanager / etc.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-rules
+  namespace: falco
+data:
+  metrovision_rules.yaml: |
+    - rule: Shell spawned inside MetroVision API container
+      desc: A shell or interpreter was spawned in the API pod
+            (the distroless image has no shell — this is a strong IoC).
+      condition: >
+        spawned_process and
+        container and
+        k8s.pod.label.app = "metrovision-api" and
+        proc.name in (shell_binaries)
+      output: >
+        Shell in MetroVision API pod
+        (pod=%k8s.pod.name container=%container.name proc=%proc.name
+         cmdline=%proc.cmdline user=%user.name)
+      priority: CRITICAL
+      tags: [container, shell, metrovision]
+
+    - rule: Write to /etc by MetroVision API
+      desc: Detect any write under /etc inside the API pod
+            (the rootfs is read-only — writes must be impossible).
+      condition: >
+        open_write and
+        container and
+        k8s.pod.label.app = "metrovision-api" and
+        fd.name startswith /etc
+      output: >
+        Write to /etc inside MetroVision API
+        (pod=%k8s.pod.name path=%fd.name proc=%proc.name cmdline=%proc.cmdline)
+      priority: CRITICAL
+      tags: [filesystem, metrovision]
+
+    - rule: Unexpected outbound connection from MetroVision API
+      desc: Egress not to MLflow / DNS — pinpoints exfiltration attempts
+            that slipped past the NetworkPolicy.
+      condition: >
+        outbound and
+        container and
+        k8s.pod.label.app = "metrovision-api" and
+        not fd.sip in (mlflow_ips_macro) and
+        not fd.sport = 53
+      output: >
+        Unexpected egress from MetroVision API
+        (pod=%k8s.pod.name dest=%fd.rip:%fd.rport proc=%proc.name)
+      priority: WARNING
+      tags: [network, metrovision]
+
+  mlflow_ips_macro.yaml: |
+    # Populate this list from the MLflow Service ClusterIP at deploy time
+    # (or template the manifest from kustomize / Helm).
+    - macro: mlflow_ips_macro
+      condition: (fd.sip in ())
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: falco
+  namespace: falco
+spec:
+  selector:
+    matchLabels:
+      app: falco
+  template:
+    metadata:
+      labels:
+        app: falco
+    spec:
+      serviceAccountName: falco
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+        - name: falco
+          image: falcosecurity/falco-no-driver:0.39.2
+          # Falco needs broad system access — the DaemonSet is the trust
+          # anchor, scoped to its own namespace + ServiceAccount.
+          securityContext:
+            privileged: true
+          env:
+            - name: FALCO_BPF_PROBE
+              value: ""
+          args:
+            - /usr/bin/falco
+            - --cri=/run/containerd/containerd.sock
+            - -K
+            - /var/run/secrets/kubernetes.io/serviceaccount/token
+            - -k
+            - https://$(KUBERNETES_SERVICE_HOST)
+            - -pk
+          volumeMounts:
+            - name: containerd-socket
+              mountPath: /run/containerd/containerd.sock
+              readOnly: true
+            - name: proc-fs
+              mountPath: /host/proc
+              readOnly: true
+            - name: boot-fs
+              mountPath: /host/boot
+              readOnly: true
+            - name: lib-modules
+              mountPath: /host/lib/modules
+              readOnly: true
+            - name: usr-fs
+              mountPath: /host/usr
+              readOnly: true
+            - name: etc-fs
+              mountPath: /host/etc
+              readOnly: true
+            - name: falco-rules
+              mountPath: /etc/falco/rules.d
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+      volumes:
+        - name: containerd-socket
+          hostPath:
+            path: /run/containerd/containerd.sock
+        - name: proc-fs
+          hostPath: { path: /proc }
+        - name: boot-fs
+          hostPath: { path: /boot }
+        - name: lib-modules
+          hostPath: { path: /lib/modules }
+        - name: usr-fs
+          hostPath: { path: /usr }
+        - name: etc-fs
+          hostPath: { path: /etc }
+        - name: falco-rules
+          configMap:
+            name: falco-rules

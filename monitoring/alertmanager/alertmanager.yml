@@ -1,0 +1,42 @@
+global:
+  resolve_timeout: 5m
+
+# Default route — every alert lands on the dev sink unless a more specific
+# route matches. Replace `webhook_configs.url` with a real Slack / PagerDuty
+# / email integration before production rollout.
+route:
+  receiver: dev-sink
+  group_by: [alertname, severity]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity = critical
+      receiver: dev-sink
+      group_wait: 10s
+      repeat_interval: 1h
+    - matchers:
+        - domain = ml-security
+      receiver: ml-sink
+      group_interval: 10m
+
+receivers:
+  - name: dev-sink
+    webhook_configs:
+      - url: "http://localhost:9999/alerts"
+        send_resolved: true
+
+  - name: ml-sink
+    webhook_configs:
+      - url: "http://localhost:9999/ml-alerts"
+        send_resolved: true
+
+inhibit_rules:
+  # When the API is down, suppress noisier alerts that are downstream of it.
+  - source_matchers:
+      - severity = critical
+      - alertname = HighErrorRate
+    target_matchers:
+      - severity =~ "warning|info"
+    equal: [alertname]

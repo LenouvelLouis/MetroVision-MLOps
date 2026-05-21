@@ -43,3 +43,49 @@ groups:
             This can indicate legitimate distribution shift OR a poisoning
             / evasion attempt — review the latest drift report and the
             traffic source before retraining.
+
+      # ── Security alerts (phase 7.2) ─────────────────────────────────
+      # Sustained rate-limit hits suggest scripted abuse from a single key
+      # or a misbehaving client. The threshold is intentionally low because
+      # 10 r/m is the per-IP limit; > 2 r/m sustained = real signal.
+      - alert: RateLimitAbuse
+        expr: sum(rate(metrovision_errors_total{reason="rate_limited"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          domain: security
+        annotations:
+          summary: "Sustained rate-limit hits ({{ $value | printf \"%.2f\" }}/s)"
+          description: |
+            Clients are hitting the rate limit on /predict at >2 r/s
+            for >5 minutes. Likely either a runaway client or a credential
+            stuffing attempt — check the audit logs for the IP / API-key
+            hash distribution.
+
+      # Spike in invalid-type uploads = probing.
+      - alert: InvalidUploadSpike
+        expr: sum(rate(metrovision_errors_total{reason="invalid_type"}[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          domain: security
+        annotations:
+          summary: "Invalid uploads >0.5/s for >5m"
+          description: |
+            The API is rejecting non-image uploads at a sustained rate.
+            This is the signature of automated fuzzing or content-type
+            confusion attempts. Inspect audit logs for the source IPs.
+
+      # Models failed integrity check at startup -> manifest mismatch.
+      - alert: ModelIntegrityFailure
+        expr: sum(rate(metrovision_errors_total{reason="models_not_loaded"}[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          domain: security
+        annotations:
+          summary: "API rejecting traffic - models not loaded"
+          description: |
+            /predict is returning 503 because the model integrity check
+            blocked startup. Inspect the API logs for ModelIntegrityError
+            and verify model/manifest.json was not tampered with.

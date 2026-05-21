@@ -12,11 +12,16 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from api.logging_config import setup_json_logging
-from api.middleware import MaxBodySizeMiddleware, SecurityHeadersMiddleware
+from api.middleware import (
+    AuditLogMiddleware,
+    MaxBodySizeMiddleware,
+    SecurityHeadersMiddleware,
+)
 from api.model_manager import model_manager
 from api.rate_limit import limiter
 from api.routes import drift, health, metrics, predict, version
 from api.routes.metrics import ERROR_REASON, REQUEST_COUNT
+from api.tracing import setup_tracing
 
 setup_json_logging()
 logger = logging.getLogger(__name__)
@@ -62,10 +67,14 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
 
 # Middlewares are stacked outermost-last. Order applied:
-#   request:  MaxBodySize → SecurityHeaders → app
-#   response: app → SecurityHeaders → MaxBodySize
+#   request:  MaxBodySize -> SecurityHeaders -> AuditLog -> app
+#   response: app -> AuditLog -> SecurityHeaders -> MaxBodySize
+app.add_middleware(AuditLogMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(MaxBodySizeMiddleware)
+
+# OpenTelemetry: wraps the FastAPI app last so spans cover the whole stack.
+setup_tracing(app)
 
 app.include_router(predict.router)
 app.include_router(health.router)
