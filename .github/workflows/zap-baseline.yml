@@ -1,0 +1,89 @@
+name: ZAP baseline
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # Monday 06:00 UTC
+
+permissions:
+  contents: read
+  # ZAP action posts a sticky comment on the PR with the findings.
+  pull-requests: write
+  # Required to upload Sarif results to code-scanning (optional).
+  security-events: write
+
+concurrency:
+  group: zap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  passive-scan:
+    name: ZAP passive baseline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build API image (loaded into local Docker)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: docker/Dockerfile.api
+          push: false
+          load: true
+          tags: metrovision-api:zap
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Provision a stub API key file
+        run: |
+          # ZAP's baseline does passive only - it never hits /predict.
+          # Providing a placeholder key file lets the API start cleanly
+          # without exposing real credentials in CI.
+          install -m 0644 /dev/stdin .api-keys-zap <<'EOF'
+          # SHA-256 of "zap-baseline-scan-only"
+          de2b3ca5a96d24ebef7a18b1a48d1d8e7a1ed3b0c87f5c2c2cbb3b4ea0d8a8a1
+          EOF
+
+      - name: Start API container
+        run: |
+          docker run --rm -d \
+            --name metrovision-api-zap \
+            -p 8000:8000 \
+            -v "$PWD/.api-keys-zap:/run/secrets/api-keys:ro" \
+            -e METROVISION_API_KEYS_FILE=/run/secrets/api-keys \
+            metrovision-api:zap
+          # Wait until /health reports healthy or 90 s elapses.
+          for i in $(seq 1 45); do
+            if curl -sf http://localhost:8000/health | grep -q "healthy"; then
+              echo "API healthy after ${i} attempts"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to become healthy within 90s"
+          docker logs metrovision-api-zap
+          exit 1
+
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@2b5fc7f98d837319798ab7f128ea50b7d40563b6 # v0.14.0
+        with:
+          target: "http://localhost:8000/"
+          # Passive only; never send active probes against the API.
+          cmd_options: "-a -j -m 5"
+          # Fail the job on any HIGH/CRITICAL finding, warn on MEDIUM,
+          # accept LOW/INFO.
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-baseline-report
+
+      - name: Stop API container
+        if: always()
+        run: docker rm -f metrovision-api-zap || true
+
+      - name: Clean stub key file
+        if: always()
+        run: rm -f .api-keys-zap
