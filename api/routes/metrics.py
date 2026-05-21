@@ -31,6 +31,12 @@ PREDICTION_LINES = Counter(
     ["line"],
 )
 
+ERROR_REASON = Counter(
+    "metrovision_errors_total",
+    "Prediction errors, broken down by reason",
+    ["reason"],
+)
+
 
 @router.get(
     "/metrics",

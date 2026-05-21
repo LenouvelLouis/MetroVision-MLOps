@@ -36,6 +36,11 @@ coverage.xml
 # ── Docker ───────────────────────────────────────────────────────────────
 docker-compose.override.yml
 
+# ── Environment secrets ──────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
 # ── MLflow ───────────────────────────────────────────────────────────────
 mlruns/
 mlartifacts/

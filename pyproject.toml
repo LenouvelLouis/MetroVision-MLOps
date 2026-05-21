@@ -44,6 +44,7 @@ dependencies = [
     "uvicorn[standard]>=0.34,<1",
     "python-multipart>=0.0.20,<1",
     "prometheus-client>=0.22,<1",
+    "slowapi>=0.1.9,<1",
 ]
 
 [project.optional-dependencies]

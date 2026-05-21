@@ -5,16 +5,16 @@ services:
       context: .
       dockerfile: docker/Dockerfile.api
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       - LOG_LEVEL=info
     restart: unless-stopped
 
   # ── MLflow tracking server ───────────────────────────────────────────
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.22.0
+    image: ghcr.io/mlflow/mlflow:v2.22.0@sha256:191fb7f5390f92ee7f95b3a08a77ce9eb4c01dd2721107ec2460e5ba37a0a97c
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     volumes:
       - mlflow-data:/mlflow
     command: >
@@ -27,9 +27,9 @@ services:
 
   # ── Prometheus ───────────────────────────────────────────────────────
   prometheus:
-    image: prom/prometheus:v3.4.1
+    image: prom/prometheus:v3.4.1@sha256:9abc6cf6aea7710d163dbb28d8eeb7dc5baef01e38fa4cd146a406dd9f07f70d
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
@@ -42,16 +42,16 @@ services:
 
   # ── Grafana ──────────────────────────────────────────────────────────
   grafana:
-    image: grafana/grafana:11.6.0
+    image: grafana/grafana:11.6.0@sha256:62d2b9d20a19714ebfe48d1bb405086081bc602aa053e28cf6d73c7537640dfb
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=metrovision
+      - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USER:?GF_ADMIN_USER is required}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:?GF_ADMIN_PASSWORD is required}
       - GF_USERS_ALLOW_SIGN_UP=false
     depends_on:
       - prometheus
