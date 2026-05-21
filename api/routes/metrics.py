@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from fastapi.responses import PlainTextResponse
 from prometheus_client import (
     Counter,
+    Gauge,
     Histogram,
     generate_latest,
 )
@@ -35,6 +36,13 @@ ERROR_REASON = Counter(
     "metrovision_errors_total",
     "Prediction errors, broken down by reason",
     ["reason"],
+)
+
+DRIFT_SCORE = Gauge(
+    "metrovision_drift_score",
+    "Latest data-drift score reported by the Evidently job. "
+    "Conventionally in [0, 1]; values above 0.3 are alerted on.",
+    ["feature_set"],
 )
 
 

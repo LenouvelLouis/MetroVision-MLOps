@@ -27,3 +27,19 @@ groups:
         annotations:
           summary: "No traffic to MetroVision API"
           description: "The API has received zero requests in the last 15 minutes."
+
+      # ── ML-security alert (phase 5.4) ────────────────────────────────
+      - alert: DataDriftDetected
+        expr: max(metrovision_drift_score) by (feature_set) > 0.3
+        for: 30m
+        labels:
+          severity: warning
+          domain: ml-security
+        annotations:
+          summary: "Drift score > 0.3 on {{ $labels.feature_set }}"
+          description: |
+            Evidently reported a drift score of {{ $value }} on feature
+            set "{{ $labels.feature_set }}" for more than 30 minutes.
+            This can indicate legitimate distribution shift OR a poisoning
+            / evasion attempt — review the latest drift report and the
+            traffic source before retraining.

@@ -39,7 +39,14 @@ COPY --from=deps /usr/lib/x86_64-linux-gnu/libgomp.so* /usr/lib/x86_64-linux-gnu
 # Application code
 COPY api/ ./api/
 COPY myMetroProcessing.py ./
-COPY model/ ./model/
+
+# Only the pickle-free artefacts ship in the runtime image.
+# The legacy .h5 / .joblib files remain in git for the academic code
+# (app.py, metroChallenge.py) but never enter the production container.
+COPY model/manifest.json ./model/
+COPY model/cnn.keras ./model/
+COPY model/knn.npz ./model/
+COPY model/scaler.npz ./model/
 
 ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages \
     PYTHONDONTWRITEBYTECODE=1

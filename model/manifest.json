@@ -1,0 +1,18 @@
+{
+  "version": "2",
+  "comment": "SHA-256 digests of the pickle-free model artefacts. Any change here implies a deliberate model rotation and must be reviewed.",
+  "models": {
+    "cnn": {
+      "file": "cnn.keras",
+      "sha256": "2e15c3fdb3fd08a2033d86aa932f776da298c69bd826d35e3a0b987bb2f2e456"
+    },
+    "knn": {
+      "file": "knn.npz",
+      "sha256": "b9412675f36b10f527e94852ac716caba41d0065100cf6c7097b6b200334a84d"
+    },
+    "scaler": {
+      "file": "scaler.npz",
+      "sha256": "ec6287595f121e5c04645ab952e392fb5d68e16684e4ced82f74e1324660323d"
+    }
+  }
+}

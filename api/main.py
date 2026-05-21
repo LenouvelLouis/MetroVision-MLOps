@@ -15,7 +15,7 @@ from api.logging_config import setup_json_logging
 from api.middleware import MaxBodySizeMiddleware, SecurityHeadersMiddleware
 from api.model_manager import model_manager
 from api.rate_limit import limiter
-from api.routes import health, metrics, predict, version
+from api.routes import drift, health, metrics, predict, version
 from api.routes.metrics import ERROR_REASON, REQUEST_COUNT
 
 setup_json_logging()
@@ -71,3 +71,4 @@ app.include_router(predict.router)
 app.include_router(health.router)
 app.include_router(metrics.router)
 app.include_router(version.router)
+app.include_router(drift.router)
