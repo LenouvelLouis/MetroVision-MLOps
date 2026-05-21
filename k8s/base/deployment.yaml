@@ -16,8 +16,15 @@ spec:
         app: metrovision-api
         component: inference
     spec:
+      # Pod-level security (defence in depth + matches docker-compose phase 3)
       securityContext:
         runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      automountServiceAccountToken: false
       containers:
         - name: api
           image: metrovision-api:latest
@@ -25,17 +32,43 @@ spec:
           ports:
             - containerPort: 8000
               protocol: TCP
+              name: http
+          # Container-level security
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop: ["ALL"]
           envFrom:
             - configMapRef:
                 name: metrovision-config
             - secretRef:
                 name: metrovision-secret
+          # Framework caches live in tmpfs since rootfs is read-only.
+          env:
+            - name: HOME
+              value: /tmp
+            - name: XDG_CACHE_HOME
+              value: /tmp/.cache
+            - name: KERAS_HOME
+              value: /tmp/.keras
+            - name: MPLCONFIGDIR
+              value: /tmp/.matplotlib
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: api-keys
+              mountPath: /run/secrets/api-keys
+              subPath: api-keys
+              readOnly: true
           resources:
             requests:
               cpu: 250m
               memory: 512Mi
             limits:
-              cpu: "1"
+              cpu: "2"
               memory: 2Gi
           livenessProbe:
             httpGet:
@@ -53,3 +86,12 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Mi
+        - name: api-keys
+          secret:
+            secretName: metrovision-api-keys
+            defaultMode: 0440

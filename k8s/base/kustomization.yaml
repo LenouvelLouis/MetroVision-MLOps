@@ -10,5 +10,12 @@ resources:
   - deployment.yaml
   - service.yaml
   - configmap.yaml
-  - secret.yaml
   - hpa.yaml
+  - pdb.yaml
+  - networkpolicy.yaml
+  - ingress.yaml
+  - external-secret.yaml
+  - cronjob-backup.yaml
+  # secret.yaml is intentionally NOT included here in production:
+  # ExternalSecret renders the real secret from Vault. Keep secret.yaml
+  # for local minikube usage via the overlay.

@@ -29,6 +29,94 @@ services:
           memory: 2G
     restart: unless-stopped
 
+  # One-shot: chown the (fresh) Postgres volume to uid 70 so the main
+  # service can run as the `postgres` user from the start, skipping the
+  # entrypoint's root-only chmod/gosu phase that would otherwise need
+  # SETUID/CHOWN capabilities.
+  mlflow-postgres-init:
+    image: alpine:3.20.3@sha256:1e42bbe2508154c9126d48c2b8a75420c3544343bf86fd041fb7527e017a4b4a
+    user: "0:0"
+    volumes:
+      - mlflow-postgres-data:/data
+    command: ["sh", "-c", "chown -R 70:70 /data && chmod 700 /data"]
+    restart: "no"
+
+  # ── Postgres backing MLflow tracking (phase 6.1) ─────────────────────
+  # Runs as uid 70 (postgres in alpine), with full cap_drop + no-new-privs.
+  # The init service above pre-chowns the volume so the entrypoint never
+  # needs root privileges.
+  mlflow-postgres:
+    image: postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
+    user: "70:70"
+    depends_on:
+      mlflow-postgres-init:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_DB: mlflow
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: ${POSTGRES_MLFLOW_PASSWORD:?POSTGRES_MLFLOW_PASSWORD is required}
+    volumes:
+      - mlflow-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow -d mlflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    restart: unless-stopped
+
+  # ── MinIO for MLflow artefacts (phase 6.2) ───────────────────────────
+  minio:
+    image: minio/minio:RELEASE.2024-10-29T16-01-48Z@sha256:ebd2af76d40ff25ccc630533615f7ccd55fbe83d629a4b7c7a1b6311c1af3d6c
+    command: server /data --console-address ":9001"
+    ports:
+      - "127.0.0.1:9100:9000"
+      - "127.0.0.1:9101:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    restart: unless-stopped
+
+  # One-shot init: create the mlflow-artifacts bucket if missing.
+  minio-init:
+    image: minio/mc:RELEASE.2024-10-29T15-34-59Z@sha256:fb8e220caa54eed0847f7e48d4af83997e3308008261ae1612a0179f8d849ee9
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb -p local/mlflow-artifacts 2>/dev/null || true
+        echo "Bucket mlflow-artifacts ready."
+    restart: "no"
+
   # ── MLflow tracking server ───────────────────────────────────────────
   mlflow:
     build:
@@ -36,19 +124,31 @@ services:
       dockerfile: docker/Dockerfile.mlflow
     ports:
       - "127.0.0.1:5000:5000"
+    depends_on:
+      mlflow-postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     volumes:
       - mlflow-data:/mlflow
       - ./monitoring/mlflow_basic_auth.ini:/etc/mlflow/basic_auth.ini:ro
     environment:
       - MLFLOW_AUTH_CONFIG_PATH=/etc/mlflow/basic_auth.ini
       - MLFLOW_FLASK_SERVER_SECRET_KEY=${MLFLOW_FLASK_SERVER_SECRET_KEY:?MLFLOW_FLASK_SERVER_SECRET_KEY is required}
+      # boto3 / MLflow talk to MinIO using AWS-style env vars.
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      # Connection URI (Postgres) passed via env so the password stays out of `command:`.
+      - POSTGRES_MLFLOW_PASSWORD=${POSTGRES_MLFLOW_PASSWORD:?POSTGRES_MLFLOW_PASSWORD is required}
     command: >
       mlflow server
       --app-name basic-auth
       --host 0.0.0.0
       --port 5000
-      --backend-store-uri sqlite:////mlflow/mlflow.db
-      --default-artifact-root /mlflow/artifacts
+      --backend-store-uri postgresql+psycopg2://mlflow:${POSTGRES_MLFLOW_PASSWORD}@mlflow-postgres:5432/mlflow
+      --artifacts-destination s3://mlflow-artifacts/
+      --serve-artifacts
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
@@ -109,5 +209,7 @@ services:
 
 volumes:
   mlflow-data:
+  mlflow-postgres-data:
+  minio-data:
   prometheus-data:
   grafana-data:

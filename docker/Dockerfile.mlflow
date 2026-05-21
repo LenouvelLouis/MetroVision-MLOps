@@ -3,7 +3,13 @@
 # server as a non-root user.
 FROM ghcr.io/mlflow/mlflow:v2.22.0@sha256:191fb7f5390f92ee7f95b3a08a77ce9eb4c01dd2721107ec2460e5ba37a0a97c
 
-RUN pip install --no-cache-dir "mlflow[auth]==2.22.0"
+# auth: Flask-WTF for CSRF on basic-auth
+# psycopg2-binary: Postgres backend store
+# boto3: S3 artifact store (MinIO)
+RUN pip install --no-cache-dir \
+    "mlflow[auth]==2.22.0" \
+    "psycopg2-binary==2.9.10" \
+    "boto3==1.35.49"
 
 # Provision a dedicated non-root user and ensure /mlflow is writable.
 # Note: existing mlflow-data volumes created under root must be reset
