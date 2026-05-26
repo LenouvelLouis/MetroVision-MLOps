@@ -77,10 +77,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install pip-audit
-        run: pip install "pip-audit==2.9.0"
+      - name: Install pip-audit and uv
+        run: pip install "pip-audit==2.9.0" uv
 
-      - name: Run pip-audit (vulns in .pip-audit-ignore are skipped with justification)
+      - name: Export locked dependencies
+        run: uv export --frozen --no-dev --no-emit-project --no-emit-workspace --format requirements-txt --output-file requirements.lock.txt
+
+      - name: Run pip-audit against lock file
         run: |
           set -euo pipefail
           IGNORE_ARGS=""
@@ -92,4 +95,4 @@ jobs:
               [ -n "$id" ] && IGNORE_ARGS="$IGNORE_ARGS --ignore-vuln $id"
             done < .pip-audit-ignore
           fi
-          pip-audit --strict $IGNORE_ARGS .
+          pip-audit --strict --no-deps $IGNORE_ARGS -r requirements.lock.txt
