@@ -24,6 +24,10 @@ CVE-2026-2614
 PYSEC-2025-52
 PYSEC-2026-93
 PYSEC-2026-94
+# Unauthenticated FastAPI route access (CVE-2026-2652, CVSS 8.6).
+# Fixed in mlflow 3.11.0. Same compensating controls: localhost-only + basic-auth.
+# Reviewed: 2026-05-26 — Louis
+CVE-2026-2652
 
 # ── Transitive deps that pip-audit only sees via PyPA's DB ────────────
 # joblib path traversal — only exploitable when un-pickling untrusted

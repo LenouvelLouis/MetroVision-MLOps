@@ -39,6 +39,7 @@ CVE-2026-2393
 CVE-2026-2614
 CVE-2026-2635
 CVE-2026-0596
+CVE-2026-2652
 
 # ── distroless base image (Debian 12 + CPython 3.11) ─────────────────
 # These CVEs ship with the gcr.io/distroless/python3-debian12:nonroot
@@ -52,6 +53,14 @@ CVE-2026-0861
 CVE-2025-13836
 CVE-2025-8194
 CVE-2026-1299
+
+# ── Debian bookworm DSAs (May 2026) ──────────────────────────────────
+# libgcrypt20 DoS via incorrect ECDH and krb5 remote DoS via NegoEx
+# parsing. Both fixed in bookworm but distroless hasn't rebased yet.
+# Same compensating controls as above: nonroot, read-only rootfs, caps dropped.
+# Reviewed: 2026-05-26 — Louis
+CVE-2026-41989
+CVE-2026-40355
 
 # ── gradio: optional academic dep only ────────────────────────────────
 # `gradio` lives in the [academic] extra and is used solely by the legacy
