@@ -60,7 +60,7 @@ CVE-2026-1299
 # Same compensating controls as above: nonroot, read-only rootfs, caps dropped.
 # Reviewed: 2026-05-26 — Louis
 CVE-2026-41989
-CVE-2026-40355
+CVE-2026-40356
 
 # ── gradio: optional academic dep only ────────────────────────────────
 # `gradio` lives in the [academic] extra and is used solely by the legacy
