@@ -55,3 +55,10 @@ PYSEC-2026-97
 # only from MLflow tracking-server endpoints, already auth-gated.
 # Reviewed: 2026-05-21 — Louis
 PYSEC-2026-113
+
+# starlette path traversal — fix is in starlette 1.0.1, a major version
+# bump incompatible with fastapi <1. Starlette is not directly exposed;
+# FastAPI handles routing. Compensating controls: API key auth, rate
+# limiting, security headers, non-root distroless image.
+# Reviewed: 2026-05-26 — Louis
+PYSEC-2026-161
